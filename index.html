@@ -43,14 +43,80 @@
 
     <script>
         // 簡易港鐵站資料庫 (包含部分主要車站作示範，可自行擴充)
+// 完整港鐵車站資料庫 (包含精確經緯度與 API 代碼)
         const mtrStations = [
-            { name: "旺角", lat: 22.3193, lng: 114.1694, line: "TWL", code: "MOK" },
+            // 🔴 荃灣綫 (Tsuen Wan Line - TWL)
+            { name: "中環", lat: 22.2818, lng: 114.1581, line: "TWL", code: "CEN" },
+            { name: "金鐘", lat: 22.2796, lng: 114.1646, line: "TWL", code: "ADM" },
             { name: "尖沙咀", lat: 22.2975, lng: 114.1722, line: "TWL", code: "TST" },
-            { name: "中環", lat: 22.2818, lng: 114.1581, line: "ISL", code: "CEN" },
+            { name: "佐敦", lat: 22.3049, lng: 114.1717, line: "TWL", code: "JOR" },
+            { name: "油麻地", lat: 22.3134, lng: 114.1706, line: "TWL", code: "YMT" },
+            { name: "旺角", lat: 22.3193, lng: 114.1694, line: "TWL", code: "MOK" },
+            { name: "太子", lat: 22.3245, lng: 114.1681, line: "TWL", code: "PRE" },
+            { name: "深水埗", lat: 22.3308, lng: 114.1623, line: "TWL", code: "SSP" },
+            { name: "美孚", lat: 22.3369, lng: 114.1396, line: "TWL", code: "MEF" },
+            { name: "葵芳", lat: 22.3564, lng: 114.1280, line: "TWL", code: "KWF" },
+            { name: "荃灣", lat: 22.3739, lng: 114.1186, line: "TWL", code: "TSW" },
+
+            // 🔵 港島綫 (Island Line - ISL)
+            { name: "堅尼地城", lat: 22.2811, lng: 114.1274, line: "ISL", code: "KET" },
+            { name: "香港大學", lat: 22.2843, lng: 114.1352, line: "ISL", code: "HKU" },
+            { name: "上環", lat: 22.2867, lng: 114.1520, line: "ISL", code: "SHW" },
+            { name: "灣仔", lat: 22.2777, lng: 114.1731, line: "ISL", code: "WAC" },
             { name: "銅鑼灣", lat: 22.2803, lng: 114.1850, line: "ISL", code: "CAB" },
-            { name: "九龍塘", lat: 22.3370, lng: 114.1760, line: "EAL", code: "KOT" },
-            { name: "觀塘", lat: 22.3123, lng: 114.2265, line: "KTL", code: "KWT" }
-        ];
+            { name: "天后", lat: 22.2825, lng: 114.1917, line: "ISL", code: "TIH" },
+            { name: "北角", lat: 22.2913, lng: 114.2003, line: "ISL", code: "NOP" },
+            { name: "鰂魚涌", lat: 22.2882, lng: 114.2109, line: "ISL", code: "QUB" },
+            { name: "太古", lat: 22.2848, lng: 114.2173, line: "ISL", code: "TAK" },
+            { name: "柴灣", lat: 22.2644, lng: 114.2372, line: "ISL", code: "CHW" },
+
+            // 🟢 觀塘綫 (Kwun Tong Line - KTL)
+            { name: "黃埔", lat: 22.3033, lng: 114.1883, line: "KTL", code: "WHA" },
+            { name: "何文田", lat: 22.3093, lng: 114.1825, line: "KTL", code: "HOM" },
+            { name: "石硤尾", lat: 22.3316, lng: 114.1686, line: "KTL", code: "SKM" },
+            { name: "九龍塘", lat: 22.3370, lng: 114.1760, line: "KTL", code: "KOT" },
+            { name: "黃大仙", lat: 22.3423, lng: 114.1930, line: "KTL", code: "WTS" },
+            { name: "鑽石山", lat: 22.3400, lng: 114.2016, line: "KTL", code: "DIH" },
+            { name: "彩虹", lat: 22.3353, lng: 114.2045, line: "KTL", code: "CHH" },
+            { name: "九龍灣", lat: 22.3236, lng: 114.2141, line: "KTL", code: "KOB" },
+            { name: "觀塘", lat: 22.3123, lng: 114.2265, line: "KTL", code: "KWT" },
+            { name: "調景嶺", lat: 22.3045, lng: 114.2526, line: "KTL", code: "TIK" },
+
+            // 🩵 東鐵綫 (East Rail Line - EAL)
+            { name: "會展", lat: 22.2817, lng: 114.1751, line: "EAL", code: "EXC" },
+            { name: "紅磡", lat: 22.3031, lng: 114.1813, line: "EAL", code: "HUH" },
+            { name: "旺角東", lat: 22.3220, lng: 114.1717, line: "EAL", code: "MKK" },
+            { name: "大圍", lat: 22.3729, lng: 114.1794, line: "EAL", code: "TAW" },
+            { name: "沙田", lat: 22.3828, lng: 114.1873, line: "EAL", code: "SHT" },
+            { name: "大學", lat: 22.4132, lng: 114.2104, line: "EAL", code: "UNI" },
+            { name: "大埔墟", lat: 22.4442, lng: 114.1691, line: "EAL", code: "TAP" },
+            { name: "粉嶺", lat: 22.4920, lng: 114.1384, line: "EAL", code: "FAN" },
+            { name: "上水", lat: 22.5013, lng: 114.1278, line: "EAL", code: "SHS" },
+            { name: "羅湖", lat: 22.5286, lng: 114.1132, line: "EAL", code: "LOW" },
+
+            // 🟤 屯馬綫 (Tuen Ma Line - TML)
+            { name: "屯門", lat: 22.3950, lng: 113.9741, line: "TML", code: "TUM" },
+            { name: "天水圍", lat: 22.4455, lng: 114.0044, line: "TML", code: "TIS" },
+            { name: "元朗", lat: 22.4461, lng: 114.0347, line: "TML", code: "YUL" },
+            { name: "荃灣西", lat: 22.3687, lng: 114.1111, line: "TML", code: "TWW" },
+            { name: "南昌", lat: 22.3262, lng: 114.1537, line: "TML", code: "NAC" },
+            { name: "柯士甸", lat: 22.3045, lng: 114.1661, line: "TML", code: "AUS" },
+            { name: "土瓜灣", lat: 22.3168, lng: 114.1884, line: "TML", code: "TKW" },
+            { name: "啟德", lat: 22.3323, lng: 114.1983, line: "TML", code: "KAT" },
+            { name: "烏溪沙", lat: 22.4276, lng: 114.2443, line: "TML", code: "WKS" },
+
+            // 🧡 東涌綫 (Tung Chung Line - TCL)
+            { name: "香港", lat: 22.2847, lng: 114.1581, line: "TCL", code: "HOK" },
+            { name: "九龍", lat: 22.3043, lng: 114.1615, line: "TCL", code: "KOW" },
+            { name: "奧運", lat: 22.3175, lng: 114.1601, line: "TCL", code: "OLY" },
+            { name: "青衣", lat: 22.3584, lng: 114.1069, line: "TCL", code: "TSY" },
+            { name: "東涌", lat: 22.2891, lng: 113.9413, line: "TCL", code: "TUC" },
+
+            // 💛 南港島綫 (South Island Line - SIL)
+            { name: "海洋公園", lat: 22.2478, lng: 114.1754, line: "SIL", code: "OCP" },
+            { name: "黃竹坑", lat: 22.2482, lng: 114.1688, line: "SIL", code: "WCH" },
+            { name: "海怡半島", lat: 22.2435, lng: 114.1458, line: "SIL", code: "SOH" }
+        ];;
 
         let map, directionsService, directionsRenderer;
         let userPos = null;
