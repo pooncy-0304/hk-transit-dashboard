@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香港實時出行 Dashboard</title>
+    <style>
+        :root { --primary: #0056b3; --bg: #f4f7f6; --card-bg: #ffffff; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: var(--primary); margin-bottom: 20px; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 1000px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .map-card { grid-column: span 2; height: 400px; padding: 0; overflow: hidden; }
+        #map { width: 100%; height: 100%; }
+        h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .info-row { margin: 10px 0; font-size: 1.1em; }
+        .highlight { font-weight: bold; color: #d9534f; }
+        .loading { color: #888; font-style: italic; }
+        @media (max-width: 768px) { .dashboard { grid-template-columns: 1fr; } .map-card { grid-column: span 1; height: 300px; } }
+    </style>
+</head>
+<body>
+
+    <h1>📍 實時出行 Dashboard</h1>
+
+    <div class="dashboard">
+        <div class="card">
+            <h3>🌤️ 現時位置與天氣</h3>
+            <div id="location-info" class="info-row loading">正在獲取位置...</div>
+            <div id="weather-info" class="info-row loading">正在載入天氣資訊...</div>
+        </div>
+
+        <div class="card">
+            <h3>🚇 最近港鐵站到站資訊</h3>
+            <div id="mtr-station" class="info-row loading">等待定位以計算最近車站...</div>
+            <div id="mtr-time" class="info-row"></div>
+        </div>
+
+        <div class="card map-card">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        // 簡易港鐵站資料庫 (包含部分主要車站作示範，可自行擴充)
+        const mtrStations = [
+            { name: "旺角", lat: 22.3193, lng: 114.1694, line: "TWL", code: "MOK" },
+            { name: "尖沙咀", lat: 22.2975, lng: 114.1722, line: "TWL", code: "TST" },
+            { name: "中環", lat: 22.2818, lng: 114.1581, line: "ISL", code: "CEN" },
+            { name: "銅鑼灣", lat: 22.2803, lng: 114.1850, line: "ISL", code: "CAB" },
+            { name: "九龍塘", lat: 22.3370, lng: 114.1760, line: "EAL", code: "KOT" },
+            { name: "觀塘", lat: 22.3123, lng: 114.2265, line: "KTL", code: "KWT" }
+        ];
+
+        let map, directionsService, directionsRenderer;
+        let userPos = null;
+
+        // 1. 初始化 Google Map
+        function initMap() {
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer();
+            
+            // 預設中心點 (香港)
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: { lat: 22.3193, lng: 114.1694 } 
+            });
+            directionsRenderer.setMap(map);
+
+            getUserLocation();
+            getWeather();
+        }
+
+        // 2. 獲取使用者當前位置
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        document.getElementById('location-info').innerHTML = `緯度: ${userPos.lat.toFixed(4)}<br>經度: ${userPos.lng.toFixed(4)}`;
+                        
+                        map.setCenter(userPos);
+                        map.setZoom(16);
+                        
+                        findNearestMTR(userPos);
+                    },
+                    () => { document.getElementById('location-info').innerHTML = "無法獲取位置權限。"; }
+                );
+            } else {
+                document.getElementById('location-info').innerHTML = "瀏覽器不支援地理定位。";
+            }
+        }
+
+        // 3. 獲取香港天文台天氣
+        async function getWeather() {
+            try {
+                const res = await fetch('https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc');
+                const data = await res.json();
+                const temp = data.temperature.data[1].value; // 取得香港天文台總部溫度
+                document.getElementById('weather-info').innerHTML = `氣溫：<span class="highlight">${temp}°C</span><br>分區天氣情況已更新`;
+            } catch (err) {
+                document.getElementById('weather-info').innerHTML = "暫時無法載入天氣數據。";
+            }
+        }
+
+        // 4. 計算最近的港鐵站 (Haversine 公式)
+        function findNearestMTR(userPos) {
+            let nearest = null;
+            let minDistance = Infinity;
+
+            mtrStations.forEach(station => {
+                const dist = getDistanceFromLatLonInKm(userPos.lat, userPos.lng, station.lat, station.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearest = station;
+                }
+            });
+
+            if (nearest) {
+                document.getElementById('mtr-station').innerHTML = `距離你最近的是：<span class="highlight">${nearest.name}站</span> (${(minDistance).toFixed(2)} km)`;
+                getMTRSchedule(nearest.line, nearest.code);
+                calcRoute(userPos, { lat: nearest.lat, lng: nearest.lng });
+            }
+        }
+
+        // 計算距離的輔助函數
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; // 地球半徑 (km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            return R * c;
+        }
+
+        // 5. 獲取港鐵到站時間 (MTR Open Data)
+        async function getMTRSchedule(line, station) {
+            const url = `https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${line}&sta=${station}`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.status === 1 && data.data[`${line}-${station}`]) {
+                    const upData = data.data[`${line}-${station}`].UP;
+                    const downData = data.data[`${line}-${station}`].DOWN;
+                    
+                    let html = "";
+                    if (upData && upData.length > 0) {
+                        html += `往 ${upData[0].dest}: <span class="highlight">${upData[0].time.substring(11, 16)}</span><br>`;
+                    }
+                    if (downData && downData.length > 0) {
+                        html += `往 ${downData[0].dest}: <span class="highlight">${downData[0].time.substring(11, 16)}</span>`;
+                    }
+                    document.getElementById('mtr-time').innerHTML = html || "暫無列車數據";
+                } else {
+                    document.getElementById('mtr-time').innerHTML = "未能獲取該站實時數據。";
+                }
+            } catch (err) {
+                document.getElementById('mtr-time').innerHTML = "港鐵數據連線錯誤。";
+            }
+        }
+
+        // 6. 在 Google Map 畫出步行路線
+        function calcRoute(start, end) {
+            const request = {
+                origin: start,
+                destination: end,
+                travelMode: 'WALKING'
+            };
+            directionsService.route(request, (result, status) => {
+                if (status == 'OK') {
+                    directionsRenderer.setDirections(result);
+                }
+            });
+        }
+    </script>
+    
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap"></script>
+</body>
+</html>
